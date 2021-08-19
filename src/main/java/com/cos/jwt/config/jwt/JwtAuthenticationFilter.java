@@ -1,5 +1,7 @@
 package com.cos.jwt.config.jwt;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.cos.jwt.config.auth.PrincipalDetails;
 import com.cos.jwt.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +17,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Date;
 
 //스프링 시큐리티에 UsernamePasswordAuthenticationFilter가 있다.
 // /login 요청 -> username, password 전송(post) -> UsernamePasswordAuthenticationFilter 동작
@@ -61,7 +64,17 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     //JWT 토큰을 만들어서 request 요청한 사용자에게 응답
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
-        System.out.println("successfulAuthentication() 실행");
-        super.successfulAuthentication(request, response, chain, authResult);
+        System.out.println("successfulAuthentication() 실행 = 인증 완료");
+        PrincipalDetails principalDetails = (PrincipalDetails) authResult.getPrincipal();
+
+        //RSA 방식X, Hash 방식O
+        String jwtToken = JWT.create()
+                .withSubject("cosToken")
+                .withExpiresAt(new Date(System.currentTimeMillis() + JwtProperties.EXPIRATION_TIME)) //유효시간 : 10분
+                .withClaim("id", principalDetails.getUser().getId())
+                .withClaim("username", principalDetails.getUser().getUsername())
+                .sign(Algorithm.HMAC512(JwtProperties.SECRET));
+
+        response.addHeader(JwtProperties.HEADER_STRING, JwtProperties.TOKEN_PREFIX+jwtToken);
     }
 }
